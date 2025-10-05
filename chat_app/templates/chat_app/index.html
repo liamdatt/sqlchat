@@ -1,0 +1,54 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL AI Analyst | Expert Data Intelligence</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'chat_app/style.css' %}">
+    <meta name="description" content="AI-powered SQL data analysis assistant that helps you query and visualize your data.">
+</head>
+<body>
+    <header>
+        <h1><i class="fas fa-database"></i> SQL AI Data Analyst</h1>
+        <p class="tagline">Your intelligent SQL assistant for data insights</p>
+    </header>
+    
+    <div class="container">
+        <div id="chatbox">
+            <!-- Initial welcome message -->
+            <div class="chat-message assistant-message welcome-animation">
+                <strong>Assistant</strong>
+                Welcome to SQL AI Data Analyst! I can help you analyze your data by writing SQL queries, generating visualizations, and providing insights. Try asking questions like:
+                <ul style="margin-top: 8px; margin-left: 20px; list-style-type: disc;">
+                    <li>What are the top 5 products by revenue?</li>
+                    <li>Show me monthly sales trends for 1998</li>
+                    <li>Provide a bar chart showing total revenue year over year</li>
+                    <li>Which customers placed the most orders?</li>
+                </ul>
+            </div>
+            <!-- Chat messages will appear here -->
+        </div>
+        
+        <div class="input-area">
+            <input type="text" id="userInput" placeholder="Ask a question about your data..." aria-label="Your question">
+            <button id="sendButton" class="btn-effect">
+                <i class="fas fa-paper-plane"></i> Send
+            </button>
+            <div class="spinner" id="loadingSpinner"></div>
+        </div>
+    </div>
+
+    <footer>
+        <p><i class="fas fa-bolt"></i> Powered by AI data intelligence <i class="fas fa-chart-line"></i></p>
+    </footer>
+
+    <script>
+        // Pass the Django URL to the global JavaScript scope
+        window.ASK_AGENT_URL_GLOBAL = "{% url 'chat_app:ask_agent' %}";
+    </script>
+    <script src="{% static 'chat_app/script.js' %}" defer></script>
+</body>
+</html>

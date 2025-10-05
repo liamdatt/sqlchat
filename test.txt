@@ -1,0 +1,1 @@
+  pip install -U streamlit python-dotenv openai langchain-core langchain-community langchain-experimental langchain-openai psycopg2-binary sqlalchemy
