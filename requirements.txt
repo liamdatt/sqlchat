@@ -7,4 +7,6 @@ langchain-experimental
 langchain-openai
 python-dotenv
 matplotlib
+gunicorn
+whitenoise
 # Add gunicorn or whitenoise later for deployments

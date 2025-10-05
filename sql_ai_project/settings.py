@@ -10,22 +10,41 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
+import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load environment variables from .env at project root (if present)
+load_dotenv(BASE_DIR / '.env')
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
+# ---- Security & env-driven config ----
+# IMPORTANT: never keep a real secret here. Read from env with a safe default for dev.
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-=aazks+w_@ux%#at-dads!__o5(ku(8@qlgh(x3u6-sd-a)%w3')
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-=aazks+w_@ux%#at-dads!__o5(ku(8@qlgh(x3u6-sd-a)%w3'
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Accept hosts from env. In prod, set DJANGO_ALLOWED_HOSTS="app.example.com"
+ALLOWED_HOSTS = (
+    os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',')
+    if os.environ.get('DJANGO_ALLOWED_HOSTS')
+    else ['localhost', '127.0.0.1', '0.0.0.0']
+)
 
-ALLOWED_HOSTS = []
+# Needed for POST forms/cookies when served behind Cloudflare
+# e.g. DJANGO_CSRF_ORIGIN="https://app.example.com"
+CSRF_TRUSTED_ORIGINS = (
+    [os.environ['DJANGO_CSRF_ORIGIN']]
+    if os.environ.get('DJANGO_CSRF_ORIGIN')
+    else []
+)
+
+# Trust the Cloudflare/ingress proxy for HTTPS
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+# (Keep SECURE_SSL_REDIRECT off unless you confirm cloudflared sets X-Forwarded-Proto=https.)
 
 
 # Application definition
@@ -42,6 +61,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # WhiteNoise must be early to serve static files in the container
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -71,15 +92,37 @@ TEMPLATES = [
 WSGI_APPLICATION = 'sql_ai_project.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
+# ---- Database (SQLite for now, path can come from env for persistence) ----
+SQLITE_PATH = os.environ.get('SQLITE_PATH')  # e.g. "/data/db.sqlite3" set in .env
+# --- Database: Postgres via env; fallback to SQLite for dev ---
+DB_NAME = os.environ.get("POSTGRES_DB")
+DB_USER = os.environ.get("POSTGRES_USER")
+DB_PASSWORD = os.environ.get("POSTGRES_PASSWORD")
+DB_HOST = os.environ.get("POSTGRES_HOST") or os.environ.get("DB_HOST")  # allow either
+DB_PORT = os.environ.get("POSTGRES_PORT", "5432")
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if all([DB_NAME, DB_USER, DB_PASSWORD, DB_HOST]):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": DB_NAME,
+            "USER": DB_USER,
+            "PASSWORD": DB_PASSWORD,
+            "HOST": DB_HOST,
+            "PORT": DB_PORT,
+            "CONN_MAX_AGE": 60,  # keep-alive for perf
+            "OPTIONS": {"sslmode": os.environ.get("POSTGRES_SSLMODE", "disable")},
+        }
     }
-}
+else:
+    # Fallback (works in dev or before DB is configured)
+    SQLITE_PATH = os.environ.get("SQLITE_PATH")
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": SQLITE_PATH if SQLITE_PATH else BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
