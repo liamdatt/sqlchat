@@ -20,6 +20,7 @@ from langchain.prompts import PromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain.tools.base import BaseTool
 from langchain.chains.llm import LLMChain
+from sqlalchemy import create_engine
 
 load_dotenv()
 
@@ -31,8 +32,17 @@ DB_URI = os.environ["DATABASE_URL"]  # required
 
 llm = ChatOpenAI(model_name=OPENAI_MODEL, temperature=TEMPERATURE)
 
-db = SQLDatabase.from_uri(
+# Create engine with connection pooling safeguards
+engine = create_engine(
     DB_URI,
+    pool_pre_ping=True,  # Test connections before use
+    pool_recycle=300,    # Recycle connections every 5 minutes
+    pool_timeout=20,     # Timeout for getting connection from pool
+    max_overflow=10,     # Allow extra connections beyond pool_size
+)
+
+db = SQLDatabase(
+    engine=engine,
     include_tables=[
         "categories", "customers", "customer_customer_demo", "customer_demographics",
         "employees", "employee_territories", "order_details", "orders",

@@ -53,19 +53,38 @@ function displayMessage(sender, message, type = 'normal') {
         console.error("Chatbox element not found!");
         return;
     }
+    
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('chat-message');
+    
+    // Create avatar
+    const avatarDiv = document.createElement('div');
+    avatarDiv.classList.add('message-avatar');
+    
+    // Create message content container
+    const contentDiv = document.createElement('div');
+    contentDiv.classList.add('message-content');
+    
+    // Create sender label
+    const strong = document.createElement('strong');
+    
+    // Create message text container
+    const messageText = document.createElement('div');
+    messageText.classList.add('message-text');
+    
     if (type === 'user') {
         messageDiv.classList.add('user-message');
+        avatarDiv.innerHTML = '<i class="fas fa-user"></i>';
+        strong.textContent = 'You';
     } else if (type === 'error') {
         messageDiv.classList.add('error-message');
+        avatarDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+        strong.textContent = 'Error';
     } else {
         messageDiv.classList.add('assistant-message');
+        avatarDiv.innerHTML = '<i class="fas fa-robot"></i>';
+        strong.textContent = 'FloPro Assistant';
     }
-
-    const strong = document.createElement('strong');
-    strong.textContent = sender + ": ";
-    messageDiv.appendChild(strong);
 
     // Handle inline plot images
     const plotMarker = 'Plot generated at:';
@@ -78,19 +97,24 @@ function displayMessage(sender, message, type = 'normal') {
         const afterText = imageUrl ? after.substring(imageUrl.length).trim() : after.trim();
 
         if (beforeText) {
-            messageDiv.appendChild(document.createTextNode(beforeText));
-            messageDiv.appendChild(document.createElement('br'));
+            messageText.appendChild(document.createTextNode(beforeText));
+            messageText.appendChild(document.createElement('br'));
         }
         if (imageUrl) {
             const img = document.createElement('img');
             img.src = imageUrl;
             img.style.maxWidth = '100%';
-            messageDiv.appendChild(img);
+            messageText.appendChild(img);
         }
         if (afterText) {
-            messageDiv.appendChild(document.createElement('br'));
-            messageDiv.appendChild(document.createTextNode(afterText));
+            messageText.appendChild(document.createElement('br'));
+            messageText.appendChild(document.createTextNode(afterText));
         }
+        
+        contentDiv.appendChild(strong);
+        contentDiv.appendChild(messageText);
+        messageDiv.appendChild(avatarDiv);
+        messageDiv.appendChild(contentDiv);
         chatbox.appendChild(messageDiv);
         chatbox.scrollTop = chatbox.scrollHeight;
         return;
@@ -106,22 +130,27 @@ function displayMessage(sender, message, type = 'normal') {
             // Render the text part
             const lines = beforeText.split('\n');
             lines.forEach((line, index) => {
-                messageDiv.appendChild(document.createTextNode(line));
+                messageText.appendChild(document.createTextNode(line));
                 if (index < lines.length - 1) {
-                    messageDiv.appendChild(document.createElement('br'));
+                    messageText.appendChild(document.createElement('br'));
                 }
             });
-            messageDiv.appendChild(document.createElement('br'));
+            messageText.appendChild(document.createElement('br'));
         }
         try {
             const tableData = JSON.parse(jsonStr);
             const tableEl = createTableElement(tableData);
-            messageDiv.appendChild(tableEl);
+            messageText.appendChild(tableEl);
         } catch (e) {
             console.error('Invalid table data JSON', e);
             // Optionally show the raw JSON as fallback
-            messageDiv.appendChild(document.createTextNode(' [Invalid table data]'));
+            messageText.appendChild(document.createTextNode(' [Invalid table data]'));
         }
+        
+        contentDiv.appendChild(strong);
+        contentDiv.appendChild(messageText);
+        messageDiv.appendChild(avatarDiv);
+        messageDiv.appendChild(contentDiv);
         chatbox.appendChild(messageDiv);
         chatbox.scrollTop = chatbox.scrollHeight;
         return;
@@ -130,12 +159,16 @@ function displayMessage(sender, message, type = 'normal') {
     // Sanitize message and handle newlines explicitly
     const lines = message.split('\n');
     lines.forEach((line, index) => {
-        messageDiv.appendChild(document.createTextNode(line));
+        messageText.appendChild(document.createTextNode(line));
         if (index < lines.length - 1) {
-            messageDiv.appendChild(document.createElement('br'));    
+            messageText.appendChild(document.createElement('br'));    
         }
     });
     
+    contentDiv.appendChild(strong);
+    contentDiv.appendChild(messageText);
+    messageDiv.appendChild(avatarDiv);
+    messageDiv.appendChild(contentDiv);
     chatbox.appendChild(messageDiv);
     chatbox.scrollTop = chatbox.scrollHeight;
 }
@@ -150,6 +183,24 @@ function showMessageLoading() {
     loadingDiv.classList.add('message-loading');
     loadingDiv.id = 'message-loading-indicator';
     
+    // Create avatar
+    const avatarDiv = document.createElement('div');
+    avatarDiv.classList.add('message-avatar');
+    avatarDiv.innerHTML = '<i class="fas fa-robot"></i>';
+    avatarDiv.style.background = 'linear-gradient(135deg, var(--black-medium) 0%, var(--black-soft) 100%)';
+    avatarDiv.style.color = 'var(--primary-orange)';
+    avatarDiv.style.border = '2px solid var(--primary-orange)';
+    avatarDiv.style.width = '40px';
+    avatarDiv.style.height = '40px';
+    avatarDiv.style.minWidth = '40px';
+    avatarDiv.style.borderRadius = 'var(--radius-lg)';
+    avatarDiv.style.display = 'flex';
+    avatarDiv.style.alignItems = 'center';
+    avatarDiv.style.justifyContent = 'center';
+    avatarDiv.style.fontSize = '1.25rem';
+    
+    loadingDiv.appendChild(avatarDiv);
+    
     // Create the typing animation
     const typingIndicator = document.createElement('div');
     typingIndicator.classList.add('typing-indicator');
@@ -163,7 +214,7 @@ function showMessageLoading() {
     // Add the "Assistant is thinking" text
     const loadingText = document.createElement('div');
     loadingText.classList.add('message-loading-text');
-    loadingText.textContent = 'Assistant is thinking...';
+    loadingText.textContent = 'FloPro is thinking...';
     
     // Put it all together
     loadingDiv.appendChild(typingIndicator);
@@ -253,16 +304,29 @@ function displaySqlApprovalInChat(sqlToApprove, toolInput) {
     approvalDiv.classList.add('chat-message', 'assistant-message', 'sql-approval-message');
     approvalDiv.id = 'inline-sql-approval';
     
+    // Create avatar
+    const avatarDiv = document.createElement('div');
+    avatarDiv.classList.add('message-avatar');
+    avatarDiv.innerHTML = '<i class="fas fa-robot"></i>';
+    
+    // Create content container
+    const contentDiv = document.createElement('div');
+    contentDiv.classList.add('message-content');
+    
     // Add the heading
     const heading = document.createElement('strong');
-    heading.textContent = 'Assistant: ';
-    approvalDiv.appendChild(heading);
+    heading.textContent = 'FloPro Assistant';
+    contentDiv.appendChild(heading);
+    
+    // Create message text container
+    const messageText = document.createElement('div');
+    messageText.classList.add('message-text');
     
     // Add the instruction text
-    const instructionText = document.createElement('p');
+    const instructionText = document.createElement('div');
     instructionText.innerHTML = '<i class="fas fa-code"></i> I\'ve generated SQL to answer your question. Please review and approve:';
     instructionText.classList.add('sql-approval-instruction');
-    approvalDiv.appendChild(instructionText);
+    messageText.appendChild(instructionText);
     
     // Add the SQL textarea
     const sqlTextarea = document.createElement('textarea');
@@ -270,7 +334,7 @@ function displaySqlApprovalInChat(sqlToApprove, toolInput) {
     sqlTextarea.value = sqlToApprove;
     sqlTextarea.rows = 5;
     sqlTextarea.classList.add('inline-sql-textarea');
-    approvalDiv.appendChild(sqlTextarea);
+    messageText.appendChild(sqlTextarea);
     
     // Add the action buttons
     const buttonContainer = document.createElement('div');
@@ -285,7 +349,11 @@ function displaySqlApprovalInChat(sqlToApprove, toolInput) {
     });
     buttonContainer.appendChild(approveButton);
     
-    approvalDiv.appendChild(buttonContainer);
+    messageText.appendChild(buttonContainer);
+    contentDiv.appendChild(messageText);
+    
+    approvalDiv.appendChild(avatarDiv);
+    approvalDiv.appendChild(contentDiv);
     
     // Add the approval UI to the chat
     chatbox.appendChild(approvalDiv);

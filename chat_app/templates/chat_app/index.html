@@ -4,45 +4,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SQL AI Analyst | Expert Data Intelligence</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>FloPro SQL Agent | Intelligent Data Analysis</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{% static 'chat_app/style.css' %}">
-    <meta name="description" content="AI-powered SQL data analysis assistant that helps you query and visualize your data.">
+    <meta name="description" content="FloPro SQL Agent - AI-powered SQL data analysis with advanced visualizations and insights.">
 </head>
 <body>
+    <div class="background-grid"></div>
+    <div class="gradient-orb gradient-orb-1"></div>
+    <div class="gradient-orb gradient-orb-2"></div>
+    
     <header>
-        <h1><i class="fas fa-database"></i> SQL AI Data Analyst</h1>
-        <p class="tagline">Your intelligent SQL assistant for data insights</p>
+        <div class="logo-container">
+            <div class="logo-icon">
+                <i class="fas fa-database"></i>
+            </div>
+            <div class="logo-text">
+                <h1>FloPro <span class="highlight">SQL Agent</span></h1>
+                <p class="tagline">Intelligent Data Analysis & Insights</p>
+            </div>
+        </div>
     </header>
     
     <div class="container">
         <div id="chatbox">
             <!-- Initial welcome message -->
             <div class="chat-message assistant-message welcome-animation">
-                <strong>Assistant</strong>
-                Welcome to SQL AI Data Analyst! I can help you analyze your data by writing SQL queries, generating visualizations, and providing insights. Try asking questions like:
-                <ul style="margin-top: 8px; margin-left: 20px; list-style-type: disc;">
-                    <li>What are the top 5 products by revenue?</li>
-                    <li>Show me monthly sales trends for 1998</li>
-                    <li>Provide a bar chart showing total revenue year over year</li>
-                    <li>Which customers placed the most orders?</li>
-                </ul>
+                <div class="message-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="message-content">
+                    <strong>FloPro Assistant</strong>
+                    <div class="message-text">
+                        Welcome to FloPro SQL Agent! I'm your intelligent data assistant, ready to help you analyze your data with powerful SQL queries and stunning visualizations.
+                        <div class="example-queries">
+                            <div class="example-query">
+                                <i class="fas fa-chart-bar"></i>
+                                <span>What are the top 5 products by revenue?</span>
+                            </div>
+                            <div class="example-query">
+                                <i class="fas fa-chart-line"></i>
+                                <span>Show me monthly sales trends for 1998</span>
+                            </div>
+                            <div class="example-query">
+                                <i class="fas fa-chart-column"></i>
+                                <span>Provide a bar chart showing total revenue year over year</span>
+                            </div>
+                            <div class="example-query">
+                                <i class="fas fa-users"></i>
+                                <span>Which customers placed the most orders?</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <!-- Chat messages will appear here -->
         </div>
         
         <div class="input-area">
-            <input type="text" id="userInput" placeholder="Ask a question about your data..." aria-label="Your question">
-            <button id="sendButton" class="btn-effect">
-                <i class="fas fa-paper-plane"></i> Send
-            </button>
+            <div class="input-wrapper">
+                <i class="fas fa-comment-dots input-icon"></i>
+                <input type="text" id="userInput" placeholder="Ask me anything about your data..." aria-label="Your question">
+                <button id="sendButton" class="btn-effect">
+                    <span class="button-text">
+                        <i class="fas fa-paper-plane"></i>
+                        <span>Send</span>
+                    </span>
+                </button>
+            </div>
             <div class="spinner" id="loadingSpinner"></div>
         </div>
     </div>
 
     <footer>
-        <p><i class="fas fa-bolt"></i> Powered by AI data intelligence <i class="fas fa-chart-line"></i></p>
+        <div class="footer-content">
+            <p>
+                <i class="fas fa-bolt"></i> 
+                <span>Powered by FloPro Intelligence</span>
+                <i class="fas fa-shield-halved"></i>
+            </p>
+        </div>
     </footer>
 
     <script>
