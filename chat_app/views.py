@@ -44,7 +44,92 @@ except ImportError:
 
 # Initialize your agent components (this might be done once when Django starts)
 # For simplicity, we call it here, but consider Django's app loading mechanisms for production.
-agent_logic.initialize_agent() 
+agent_logic.initialize_agent()
+
+
+def _clear_pending_sql_state(request):
+    """Remove any session keys that track outstanding SQL approvals."""
+    keys_to_clear = [
+        'pending_sql',
+        'pending_question',
+        'pending_tool_input',
+        'pending_agent_scratchpad',
+        'resume_chat_history',
+    ]
+    for key in keys_to_clear:
+        if key in request.session:
+            del request.session[key]
+
+
+def _execute_sql_and_resume(
+    request,
+    sql_to_execute,
+    original_question,
+    interrupted_scratchpad,
+    current_chat_history_for_resume,
+    chat_history,
+):
+    """Execute SQL, feed the results back into the agent, and return the response."""
+
+    sql_execution_output = agent_logic.execute_sql_query(sql_to_execute)
+
+    if isinstance(sql_execution_output, str):
+        chat_history.append({"role": "assistant", "content": sql_execution_output})
+        request.session['chat_history'] = chat_history
+        _clear_pending_sql_state(request)
+        return JsonResponse({'error': sql_execution_output})
+    elif isinstance(sql_execution_output, dict):
+        sql_result_json_str = json.dumps(sql_execution_output)
+        resumed_scratchpad = f"{interrupted_scratchpad}Observation: {sql_result_json_str}\n"
+    else:
+        error_msg = "Internal error: Unexpected SQL execution result type."
+        chat_history.append({"role": "assistant", "content": error_msg})
+        request.session['chat_history'] = chat_history
+        _clear_pending_sql_state(request)
+        return JsonResponse({'error': error_msg})
+
+    try:
+        auto_tools = agent_logic.get_auto_execute_tools()
+        result = agent_logic.run_agent_invoke_with_tools(
+            prompt=original_question,
+            chat_history_list_of_dicts=current_chat_history_for_resume,
+            agent_scratchpad_str=resumed_scratchpad,
+            custom_tools=auto_tools,
+        )
+        agent_output = result.get('output', str(result))
+
+        chat_history.append({"role": "assistant", "content": agent_output})
+        request.session['chat_history'] = chat_history
+        _clear_pending_sql_state(request)
+        return JsonResponse({'answer': agent_output})
+
+    except agent_logic.SQLApprovalRequired as e_resume:
+        if request.session.get('auto_execute_sql'):
+            return _execute_sql_and_resume(
+                request,
+                e_resume.sql,
+                original_question,
+                e_resume.agent_scratchpad,
+                current_chat_history_for_resume,
+                chat_history,
+            )
+
+        request.session['pending_sql'] = e_resume.sql
+        request.session['pending_question'] = original_question
+        request.session['pending_tool_input'] = e_resume.tool_input
+        request.session['pending_agent_scratchpad'] = e_resume.agent_scratchpad
+        request.session['resume_chat_history'] = current_chat_history_for_resume
+        return JsonResponse({
+            'sql_to_approve': e_resume.sql,
+            'tool_input': e_resume.tool_input
+        })
+
+    except Exception as e_resume_general:
+        error_message = f"Error processing request after SQL approval: {str(e_resume_general)}"
+        chat_history.append({"role": "assistant", "content": error_message})
+        request.session['chat_history'] = chat_history
+        _clear_pending_sql_state(request)
+        return JsonResponse({'error': error_message})
 
 def chat_view(request):
     # Clear ALL relevant session state when the main chat page is loaded
@@ -67,6 +152,11 @@ def ask_agent_view(request):
             user_question = data.get('question')
             approved_sql = data.get('approved_sql')
 
+            if 'auto_execute_sql' in data:
+                request.session['auto_execute_sql'] = bool(data['auto_execute_sql'])
+
+            auto_execute_sql = request.session.get('auto_execute_sql', False)
+
             # Always get chat_history; it's initialized by chat_view or appended to.
             chat_history = request.session.get('chat_history', [])
 
@@ -75,67 +165,16 @@ def ask_agent_view(request):
                 original_question = request.session.pop('pending_question', 'Error: Original question not found in session.')
                 interrupted_scratchpad = request.session.pop('pending_agent_scratchpad', '')
                 current_chat_history_for_resume = request.session.pop('resume_chat_history', list(chat_history))
+                request.session.pop('pending_tool_input', None)
 
-                sql_execution_output = agent_logic.execute_sql_query(sql_to_execute)
-                
-                resumed_scratchpad = ""
-                if isinstance(sql_execution_output, str): # Error case
-                    # Append error to chat and return
-                    chat_history.append({"role": "assistant", "content": sql_execution_output})
-                    request.session['chat_history'] = chat_history
-                    return JsonResponse({'error': sql_execution_output})
-                elif isinstance(sql_execution_output, dict): # Success case, dict with columns/rows
-                    sql_result_json_str = json.dumps(sql_execution_output)
-                    resumed_scratchpad = f"{interrupted_scratchpad}Observation: {sql_result_json_str}\n"
-                else:
-                    # Unexpected type from execute_sql_query
-                    error_msg = "Internal error: Unexpected SQL execution result type."
-                    chat_history.append({"role": "assistant", "content": error_msg})
-                    request.session['chat_history'] = chat_history
-                    return JsonResponse({'error': error_msg})
-
-                try:
-                    auto_tools = agent_logic.get_auto_execute_tools()
-                    result = agent_logic.run_agent_invoke_with_tools(
-                        prompt=original_question,
-                        chat_history_list_of_dicts=current_chat_history_for_resume,
-                        agent_scratchpad_str=resumed_scratchpad,
-                        custom_tools=auto_tools,
-                    )
-                    agent_output = result.get('output', str(result))
-
-                    # Append to the main chat_history for display
-                    chat_history.append({"role": "assistant", "content": agent_output})
-                    request.session['chat_history'] = chat_history
-
-                    # Clear any remaining SQL-specific pending state after successful resumption
-                    if 'pending_sql' in request.session: del request.session['pending_sql']
-                    if 'pending_tool_input' in request.session: del request.session['pending_tool_input']
-
-                    return JsonResponse({'answer': agent_output})
-
-                except agent_logic.SQLApprovalRequired as e_resume:
-                    request.session['pending_sql'] = e_resume.sql
-                    request.session['pending_question'] = original_question # Keep the original question context
-                    request.session['pending_tool_input'] = e_resume.tool_input
-                    request.session['pending_agent_scratchpad'] = e_resume.agent_scratchpad
-                    # Save the history that led to *this specific* SQL approval request for resumption
-                    request.session['resume_chat_history'] = current_chat_history_for_resume 
-                    return JsonResponse({
-                        'sql_to_approve': e_resume.sql,
-                        'tool_input': e_resume.tool_input
-                    })
-                except Exception as e_resume_general:
-                    error_message = f"Error processing request after SQL approval: {str(e_resume_general)}"
-                    chat_history.append({"role": "assistant", "content": error_message})
-                    request.session['chat_history'] = chat_history
-                    # Clear pending SQL state on error during resumption
-                    if 'pending_sql' in request.session: del request.session['pending_sql']
-                    if 'pending_question' in request.session: del request.session['pending_question'] # Clear potentially stale question
-                    if 'pending_tool_input' in request.session: del request.session['pending_tool_input']
-                    if 'pending_agent_scratchpad' in request.session: del request.session['pending_agent_scratchpad']
-                    if 'resume_chat_history' in request.session: del request.session['resume_chat_history']
-                    return JsonResponse({'error': error_message})
+                return _execute_sql_and_resume(
+                    request,
+                    sql_to_execute,
+                    original_question,
+                    interrupted_scratchpad,
+                    current_chat_history_for_resume,
+                    chat_history,
+                )
 
             elif user_question:
                 # New question from user
@@ -147,31 +186,36 @@ def ask_agent_view(request):
                     # Pass chat_history[:-1] which is history *before* the current user_question
                     result = agent_logic.run_agent_invoke(
                         prompt=user_question,
-                        chat_history_list_of_dicts=chat_history[:-1], 
+                        chat_history_list_of_dicts=chat_history[:-1],
                         agent_scratchpad_str="" # Always empty for a new question
                     )
                     agent_output = result.get('output', str(result))
                     chat_history.append({"role": "assistant", "content": agent_output})
                     request.session['chat_history'] = chat_history
-                    
-                    # If direct answer, clear any potential SQL state from other (failed/old) flows
-                    # This is important if a previous question in the same session needed SQL but this one doesn't.
-                    if 'pending_sql' in request.session: del request.session['pending_sql']
-                    if 'pending_question' in request.session: del request.session['pending_question']
-                    if 'pending_tool_input' in request.session: del request.session['pending_tool_input']
-                    if 'pending_agent_scratchpad' in request.session: del request.session['pending_agent_scratchpad']
-                    if 'resume_chat_history' in request.session: del request.session['resume_chat_history']
+
+                    _clear_pending_sql_state(request)
 
                     return JsonResponse({'answer': agent_output})
-                
+
                 except agent_logic.SQLApprovalRequired as e:
+                    if auto_execute_sql:
+                        request.session['resume_chat_history'] = list(chat_history)
+                        return _execute_sql_and_resume(
+                            request,
+                            e.sql,
+                            user_question,
+                            e.agent_scratchpad,
+                            request.session['resume_chat_history'],
+                            chat_history,
+                        )
+
                     request.session['pending_sql'] = e.sql
                     request.session['pending_question'] = user_question
                     request.session['pending_tool_input'] = e.tool_input
                     request.session['pending_agent_scratchpad'] = e.agent_scratchpad
                     # Save chat_history (which includes the current user_question) for resumption
                     request.session['resume_chat_history'] = list(chat_history) # Save a copy for this specific flow
-                    
+
                     return JsonResponse({
                         'sql_to_approve': e.sql,
                         'tool_input': e.tool_input

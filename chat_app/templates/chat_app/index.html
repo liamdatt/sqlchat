@@ -61,7 +61,21 @@
             </div>
             <!-- Chat messages will appear here -->
         </div>
-        
+
+        <div class="preferences-panel" role="group" aria-labelledby="autoExecuteTitle">
+            <div class="toggle-wrapper">
+                <label class="switch" aria-label="Toggle automatic SQL execution">
+                    <input type="checkbox" id="autoExecuteToggle" aria-describedby="autoExecuteDescription">
+                    <span class="slider"></span>
+                </label>
+                <div class="toggle-copy">
+                    <span id="autoExecuteTitle" class="toggle-title">Auto-run SQL</span>
+                    <span id="autoExecuteDescription" class="toggle-description">Skip manual approval and run generated SQL automatically.</span>
+                    <span id="autoExecuteStatusText" class="toggle-status"></span>
+                </div>
+            </div>
+        </div>
+
         <div class="input-area">
             <div class="input-wrapper">
                 <i class="fas fa-comment-dots input-icon"></i>
