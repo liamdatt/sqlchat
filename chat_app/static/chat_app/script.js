@@ -451,7 +451,27 @@ document.addEventListener('DOMContentLoaded', () => {
     if (userInput) {
         userInput.addEventListener('keypress', handleKeyPress);
     }
-    
+
+    const exampleQueries = document.querySelectorAll('.example-query');
+    if (exampleQueries.length && userInput) {
+        exampleQueries.forEach(example => {
+            const applyPrompt = () => {
+                const promptText = example.dataset.prompt || example.textContent.trim();
+                if (!promptText) return;
+                userInput.value = promptText;
+                userInput.focus();
+            };
+
+            example.addEventListener('click', applyPrompt);
+            example.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    applyPrompt();
+                }
+            });
+        });
+    }
+
     // Make askAgentUrl available to the script if set by Django template
     if (typeof window.ASK_AGENT_URL_GLOBAL !== 'undefined') {
         askAgentUrl = window.ASK_AGENT_URL_GLOBAL;
