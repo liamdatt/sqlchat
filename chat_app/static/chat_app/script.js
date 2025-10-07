@@ -18,6 +18,9 @@ const csrftoken = getCookie('csrftoken');
 // For now, we expect it to be globally available or we fetch it dynamically.
 let askAgentUrl = '/ask/'; // Default, will be overridden if script in HTML sets it
 
+const AUTO_EXECUTE_STORAGE_KEY = 'flopro-auto-execute-sql';
+let autoExecuteSqlEnabled = false;
+
 const loadingSpinner = document.getElementById('loadingSpinner');
 
 // Function to create an HTML table from table data
@@ -279,10 +282,10 @@ async function sendQuestion() {
 
     displayMessage('You', question, 'user');
     userInput.value = '';
-    
-    const data = { question: question };
+
+    const data = { question: question, auto_execute_sql: autoExecuteSqlEnabled };
     if (window.askAgentUrlGlobal) askAgentUrl = window.askAgentUrlGlobal; // Use global var set in HTML
-    
+
     const result = await sendRequest(askAgentUrl, data);
 
     if (result.sql_to_approve) {
@@ -381,7 +384,7 @@ async function approveSqlInline(approvedSql) {
     // Display a simple confirmation message
     displayMessage('You', `(Approved SQL)`, 'user');
     
-    const data = { approved_sql: approvedSql };
+    const data = { approved_sql: approvedSql, auto_execute_sql: autoExecuteSqlEnabled };
     if (window.askAgentUrlGlobal) askAgentUrl = window.askAgentUrlGlobal;
     const result = await sendRequest(askAgentUrl, data);
     
@@ -405,7 +408,7 @@ async function approveSql() {
     }
     displayMessage('You', `(Approved SQL)`); 
 
-    const data = { approved_sql: approvedSql };
+    const data = { approved_sql: approvedSql, auto_execute_sql: autoExecuteSqlEnabled };
     if (window.askAgentUrlGlobal) askAgentUrl = window.askAgentUrlGlobal; // Use global var set in HTML
     const result = await sendRequest(askAgentUrl, data);
 
@@ -436,6 +439,32 @@ function handleKeyPress(event) {
 
 // Event listeners should be added after the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', () => {
+    const autoExecuteToggle = document.getElementById('autoExecuteToggle');
+    const statusText = document.getElementById('autoExecuteStatusText');
+
+    const updateAutoExecuteStatusText = () => {
+        if (!statusText) return;
+        statusText.textContent = autoExecuteSqlEnabled
+            ? 'Enabled · SQL queries run immediately'
+            : 'Disabled · Review queries before running';
+    };
+
+    const storedPreference = localStorage.getItem(AUTO_EXECUTE_STORAGE_KEY);
+    if (storedPreference !== null) {
+        autoExecuteSqlEnabled = storedPreference === 'true';
+    }
+
+    if (autoExecuteToggle) {
+        autoExecuteToggle.checked = autoExecuteSqlEnabled;
+        autoExecuteToggle.addEventListener('change', () => {
+            autoExecuteSqlEnabled = autoExecuteToggle.checked;
+            localStorage.setItem(AUTO_EXECUTE_STORAGE_KEY, autoExecuteSqlEnabled ? 'true' : 'false');
+            updateAutoExecuteStatusText();
+        });
+    }
+
+    updateAutoExecuteStatusText();
+
     const sendButton = document.getElementById('sendButton');
     if (sendButton) {
         sendButton.addEventListener('click', sendQuestion);
