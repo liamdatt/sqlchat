@@ -442,6 +442,12 @@ header::before {
     transform: translateX(5px);
 }
 
+.example-query:focus {
+    outline: none;
+    background: rgba(255, 140, 0, 0.18);
+    box-shadow: var(--shadow-outline);
+}
+
 .example-query i {
     color: var(--primary-orange);
     font-size: var(--font-size-lg);
